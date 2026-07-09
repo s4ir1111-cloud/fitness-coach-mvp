@@ -1,4 +1,4 @@
-const STORAGE_KEY = "coachfit.mvp.v2";
+const STORAGE_KEY = "coachfit.mvp.v3";
 
 const seed = {
   users: [
@@ -11,7 +11,33 @@ const seed = {
       goal: "набор массы",
       level: "средний",
       limitations: "Главная цель — набрать качественную мышечную массу до 80–82 кг без лишнего жира.",
-      frequency: 5
+      frequency: 5,
+      waist: 78,
+      appetite: "средний",
+      sleepQuality: 7
+    }
+  ],
+  genetic_profiles: [
+    {
+      id: "genetic-1",
+      userId: "user-1",
+      name: "Garden Fitness Genetic Profile",
+      recovery: "среднее восстановление",
+      strengthResponse: "умеренно высокая силовая адаптация",
+      hypertrophyRange: "8-15 повторений",
+      tendonRisk: "повышенное внимание к связкам и сухожилиям",
+      caffeine: "кофеин перед тренировкой допустим при нормальном давлении и сне",
+      cardio: "Zone 2 2-3 раза в неделю по 25-35 минут",
+      appetiteControl: "контроль аппетита и талии 1 раз в неделю",
+      coachRules: [
+        "Держать основные рабочие подходы в диапазоне 8-15 повторений.",
+        "Повышать нагрузку плавно: 2.5-5% после уверенного выполнения плана.",
+        "Не повышать вес при RPE 9-10, боли в суставах или падении техники.",
+        "Добавлять Zone 2 отдельно от тяжелых ног или после легких дней.",
+        "Контролировать талию: быстрый рост талии означает избыток калорий.",
+        "Кофеин использовать до тренировки, но не поздно вечером.",
+        "Для связок и сухожилий держать разминочные подходы и избегать резких скачков веса."
+      ]
     }
   ],
   exercises: [
@@ -318,7 +344,7 @@ const seed = {
         planExercise("ex-leg-extension", 3, 12, 0, 75, "Пауза вверху, не бросай вес."),
         planExercise("ex-lying-leg-curl", 3, 12, 0, 75, "Таз прижат, задняя поверхность бедра под контролем."),
         planExercise("ex-seated-leg-curl", 3, 12, 0, 75, "Добери объем задней цепи без рывков."),
-        planExercise("ex-calf-raise", 4, "15-20", 0, 60, "Полная амплитуда и пауза в верхней точке.")
+        planExercise("ex-calf-raise", 4, "12-15", 0, 60, "Полная амплитуда и пауза в верхней точке.")
       ]
     },
     {
@@ -347,7 +373,7 @@ const seed = {
         planExercise("ex-ez-curl", 3, 10, 0, 75, "Поднимай без раскачки."),
         planExercise("ex-hammer-curl", 3, 12, 0, 75, "Работай ровно обеими руками."),
         planExercise("ex-scott-curl", 3, 12, 0, 75, "Медленный негатив."),
-        planExercise("ex-dips-close", 3, "макс.", 0, 120, "Остановись за 1 повтор до развала техники.")
+        planExercise("ex-dips-close", 3, "8-15", 0, 120, "Остановись за 1 повтор до развала техники.")
       ]
     }
   ],
@@ -399,6 +425,10 @@ function user() {
   return state.users[0];
 }
 
+function geneticProfile() {
+  return state.genetic_profiles?.[0];
+}
+
 function program() {
   return state.workout_programs[0];
 }
@@ -437,6 +467,7 @@ function navItems() {
     ["workout", "▶", "Тренировка"],
     ["program", "▦", "Программа"],
     ["history", "↗", "История"],
+    ["genetics", "◇", "Генетика"],
     ["profile", "◉", "Профиль"],
     ["admin", "⚙", "Админка"]
   ];
@@ -472,6 +503,7 @@ function renderPage() {
     workout: renderWorkout,
     program: renderProgram,
     history: renderHistory,
+    genetics: renderGenetics,
     profile: renderProfile,
     admin: renderAdmin
   };
@@ -482,6 +514,7 @@ function renderHome() {
   const day = todayDay();
   const rec = lastRecommendation();
   const last = lastSession();
+  const genetic = geneticProfile();
   return `
     <section class="hero">
       <div class="today">
@@ -505,6 +538,32 @@ function renderHome() {
       </div>
     </section>
     <div style="height:12px"></div>
+    <section class="grid two">
+      <div class="panel pad">
+        <div class="section-title">
+          <div>
+            <h2>AI Coach</h2>
+            <p>${genetic ? "Рекомендации учитывают генетический профиль: плавная прогрессия, 8-15 повторений, Zone 2 и защиту связок." : "Добавь профиль генетики, чтобы тренер точнее подбирал нагрузку."}</p>
+          </div>
+        </div>
+        <div class="tag-row">
+          <span class="tag good">прогрессия 2.5-5%</span>
+          <span class="tag">8-15 повторений</span>
+          <span class="tag">Zone 2</span>
+          <span class="tag warn">связки: без скачков веса</span>
+        </div>
+      </div>
+      <div class="panel pad">
+        <div class="section-title">
+          <div>
+            <h2>Контроль массы</h2>
+            <p>Талия ${user().waist || "—"} см · аппетит: ${user().appetite || "—"} · сон: ${user().sleepQuality || "—"}/10</p>
+          </div>
+        </div>
+        <p class="muted-note">Если талия растёт быстрее веса, держи калории аккуратнее. Если аппетит проседает, не повышай объём тренировки слишком резко.</p>
+      </div>
+    </section>
+    <div style="height:12px"></div>
     <section class="metric-row">
       ${metric("Тренировок", state.workout_sessions.length, "выполнено")}
       ${metric("Объём", `${Math.round(totalVolume())}`, "кг × повторы")}
@@ -520,6 +579,45 @@ function renderHome() {
         </div>
       </div>
       ${last ? renderSessionSummary(last) : `<div class="empty">Заверши тренировку, чтобы увидеть результат.</div>`}
+    </section>
+  `;
+}
+
+function renderGenetics() {
+  const genetic = geneticProfile();
+  return `
+    <section class="grid two">
+      <div class="panel pad">
+        <div class="section-title">
+          <div>
+            <h2>Генетический профиль</h2>
+            <p>${genetic.name}</p>
+          </div>
+        </div>
+        <div class="list">
+          <div class="item"><h3>Восстановление</h3><p>${genetic.recovery}</p></div>
+          <div class="item"><h3>Силовая адаптация</h3><p>${genetic.strengthResponse}</p></div>
+          <div class="item"><h3>Рабочие повторы</h3><p>${genetic.hypertrophyRange}</p></div>
+          <div class="item"><h3>Кардио</h3><p>${genetic.cardio}</p></div>
+        </div>
+        <div style="height:12px"></div>
+        <div class="list">
+          <div class="item"><h3>Связки и сухожилия</h3><p>${genetic.tendonRisk}. Перед первым рабочим упражнением держи 2-3 разминочных подхода и не прыгай по весу больше чем на 2.5-5%.</p></div>
+          <div class="item"><h3>Кофеин</h3><p>${genetic.caffeine}. Ориентир: 30-45 минут до тренировки, если это не портит сон.</p></div>
+          <div class="item"><h3>Аппетит и талия</h3><p>${genetic.appetiteControl}. Для набора массы цель — вес растёт плавно, талия не улетает быстрее прогресса в зале.</p></div>
+        </div>
+      </div>
+      <div class="panel pad">
+        <div class="section-title">
+          <div>
+            <h2>Правила AI Coach</h2>
+            <p>Эти правила добавлены в рекомендации после тренировки.</p>
+          </div>
+        </div>
+        <div class="list">
+          ${genetic.coachRules.map((rule, index) => `<div class="item"><h3>${index + 1}. Правило</h3><p>${rule}</p></div>`).join("")}
+        </div>
+      </div>
     </section>
   `;
 }
@@ -749,9 +847,15 @@ function renderProfile() {
         ${field("age", "Возраст", profile.age, "number")}
         ${field("height", "Рост", profile.height, "number")}
         ${field("weight", "Вес", profile.weight, "number")}
+        ${field("waist", "Талия, см", profile.waist || "", "number")}
+        ${field("sleepQuality", "Сон 1-10", profile.sleepQuality || "", "number")}
         <div class="field">
           <label>Цель</label>
           <select name="goal">${["набор массы", "сила", "жиросжигание", "поддержание формы"].map((value) => option(value, profile.goal)).join("")}</select>
+        </div>
+        <div class="field">
+          <label>Аппетит</label>
+          <select name="appetite">${["низкий", "средний", "высокий"].map((value) => option(value, profile.appetite)).join("")}</select>
         </div>
         <div class="field">
           <label>Уровень</label>
@@ -889,7 +993,10 @@ function bindEvents() {
         age: Number(data.get("age")),
         height: Number(data.get("height")),
         weight: Number(data.get("weight")),
+        waist: Number(data.get("waist")),
+        sleepQuality: Number(data.get("sleepQuality")),
         goal: data.get("goal"),
+        appetite: data.get("appetite"),
         level: data.get("level"),
         frequency: Number(data.get("frequency")),
         limitations: data.get("limitations")
@@ -1010,6 +1117,7 @@ function analyzeSession(sessionId) {
   const replacements = [];
   const drops = [];
   const wins = [];
+  const genetic = geneticProfile();
 
   items.forEach((item) => {
     const ex = exerciseById(item.exerciseId);
@@ -1057,9 +1165,17 @@ function analyzeSession(sessionId) {
   });
 
   const highRpeCount = items.filter((item) => Number(item.rpe) >= 9).length;
-  const coachComment = highRpeCount >= 2
+  const geneticAdvice = [
+    "Рабочий диапазон держим 8-15 повторений, прогрессия только плавная: 2.5-5%.",
+    "Zone 2: 25-35 минут 2-3 раза в неделю, лучше отдельно от тяжелых ног.",
+    `Контроль массы: талия ${user().waist || "—"} см, аппетит ${user().appetite || "—"}. Если талия растет быстро, не добавляй калории агрессивно.`,
+    "Кофеин можно за 30-45 минут до тренировки, если он не ухудшает сон.",
+    "Связки и сухожилия: 2-3 разминочных подхода и без резких скачков веса."
+  ];
+  const coachComment = (highRpeCount >= 2
     ? "Много RPE 9-10. Следующую тренировку лучше сделать разгрузочной: минус 7-10% веса и без отказа."
-    : "План обновлён по фактическим повторам и RPE. Держи технику и не гони вес быстрее восстановления.";
+    : "План обновлён по фактическим повторам и RPE. Держи технику и не гони вес быстрее восстановления.")
+    + (genetic ? ` ${geneticAdvice.join(" ")}` : "");
 
   applyRecommendationToProgram(items, nextWeights);
 
@@ -1070,7 +1186,7 @@ function analyzeSession(sessionId) {
     createdAt: new Date().toISOString(),
     good: wins.length ? wins.join("; ") : "Ты зафиксировал данные, теперь система может точнее подбирать нагрузку.",
     drop: drops.length ? drops.join("; ") : "Критичных спадов нет.",
-    nextPlan: nextWeights.join("; "),
+    nextPlan: `${nextWeights.join("; ")}. Дополнительно: ${geneticAdvice.slice(0, 2).join(" ")}`,
     replacements,
     coachComment
   };

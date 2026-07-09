@@ -1,0 +1,41 @@
+{
+  "id": "genetic-1",
+  "userId": "user-1",
+  "name": "Garden Fitness Genetic Profile",
+  "goal": "lean_mass_gain",
+  "targetWeightKg": "80-82",
+  "currentHeightCm": 190,
+  "currentWeightKg": "72-73",
+  "hypertrophyRange": "8-15",
+  "progression": {
+    "loadIncreasePercent": "2.5-5",
+    "dumbbellIncreaseKg": "1-2",
+    "rule": "Increase only after all planned sets are completed at the top of the rep range with clean technique and RPE below 8."
+  },
+  "conditioning": {
+    "zone2": {
+      "frequencyPerWeek": "2-3",
+      "durationMinutes": "25-35",
+      "placement": "Prefer separate days or after lighter sessions; avoid adding it after heavy legs if recovery is low."
+    }
+  },
+  "nutritionControl": {
+    "waistCheck": "weekly",
+    "appetiteCheck": "daily subjective low/medium/high",
+    "rule": "If waist increases faster than strength and body weight, reduce the calorie surplus."
+  },
+  "supplementsAndStimulants": {
+    "caffeine": {
+      "timing": "30-45 minutes pre-workout",
+      "guardrail": "Avoid late caffeine if sleep quality drops."
+    }
+  },
+  "connectiveTissue": {
+    "risk": "protect tendons and ligaments from sudden jumps",
+    "rules": [
+      "Use 2-3 warm-up sets before the first heavy exercise.",
+      "Avoid load jumps above 5% on working sets.",
+      "Do not progress weight when joint pain, tendon discomfort, or technique breakdown appears."
+    ]
+  }
+}
