@@ -1,10 +1,10 @@
-const STORAGE_KEY = "coachfit.mvp.v3";
+const STORAGE_KEY = "coachfit.mvp.v4";
 
 const seed = {
   users: [
     {
       id: "user-1",
-      name: "Алексей",
+      name: "Сергей",
       age: 32,
       height: 190,
       weight: 73,
@@ -403,17 +403,36 @@ function targetReps(reps) {
   return Number(numbers[numbers.length - 1]);
 }
 
-let state = loadState();
+let state;
 let activeTab = "home";
 let activeSession = null;
 
-function loadState() {
+async function loadState() {
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return structuredClone(seed);
+  const fallback = structuredClone(seed);
+  const loaded = raw ? parseState(raw, fallback) : fallback;
+  return applyBundledGeneticProfile(loaded);
+}
+
+function parseState(raw, fallback) {
   try {
     return JSON.parse(raw);
   } catch {
-    return structuredClone(seed);
+    return fallback;
+  }
+}
+
+async function applyBundledGeneticProfile(appState) {
+  try {
+    const response = await fetch("./genetic_profile_garden_fitness.json", { cache: "no-store" });
+    if (!response.ok) return appState;
+    const profile = await response.json();
+    return {
+      ...appState,
+      genetic_profiles: [profile]
+    };
+  } catch {
+    return appState;
   }
 }
 
@@ -515,6 +534,7 @@ function renderHome() {
   const rec = lastRecommendation();
   const last = lastSession();
   const genetic = geneticProfile();
+  const geneticSummary = genetic?.geneticCoachSummary || {};
   return `
     <section class="hero">
       <div class="today">
@@ -543,14 +563,15 @@ function renderHome() {
         <div class="section-title">
           <div>
             <h2>AI Coach</h2>
-            <p>${genetic ? "Рекомендации учитывают генетический профиль: плавная прогрессия, 8-15 повторений, Zone 2 и защиту связок." : "Добавь профиль генетики, чтобы тренер точнее подбирал нагрузку."}</p>
+            <p>${genetic ? `Учитывается генетика: ${geneticSummary.bestRepRange}, ${geneticSummary.progression}, ${geneticSummary.cardio}.` : "Добавь профиль генетики, чтобы тренер точнее подбирал нагрузку."}</p>
           </div>
         </div>
         <div class="tag-row">
-          <span class="tag good">прогрессия 2.5-5%</span>
+          <span class="tag good">+2.5-5%</span>
           <span class="tag">8-15 повторений</span>
           <span class="tag">Zone 2</span>
-          <span class="tag warn">связки: без скачков веса</span>
+          <span class="tag warn">COL5A1: связки/сухожилия</span>
+          <span class="tag">CYP1A2: кофеин</span>
         </div>
       </div>
       <div class="panel pad">
@@ -585,26 +606,32 @@ function renderHome() {
 
 function renderGenetics() {
   const genetic = geneticProfile();
+  const summary = genetic.geneticCoachSummary || {};
+  const markers = genetic.markers || [];
+  const rules = genetic.coachRules || {};
+  const markerTags = markers.slice(0, 6).map((marker) => `<span class="tag">${marker.gene}: ${marker.result}</span>`).join("");
   return `
     <section class="grid two">
       <div class="panel pad">
         <div class="section-title">
           <div>
             <h2>Генетический профиль</h2>
-            <p>${genetic.name}</p>
+            <p>${genetic.person?.name || user().name} · ${genetic.source || "профиль из файла"} · версия ${genetic.profileVersion || "—"}</p>
           </div>
         </div>
         <div class="list">
-          <div class="item"><h3>Восстановление</h3><p>${genetic.recovery}</p></div>
-          <div class="item"><h3>Силовая адаптация</h3><p>${genetic.strengthResponse}</p></div>
-          <div class="item"><h3>Рабочие повторы</h3><p>${genetic.hypertrophyRange}</p></div>
-          <div class="item"><h3>Кардио</h3><p>${genetic.cardio}</p></div>
+          <div class="item"><h3>Тип тренировок</h3><p>${summary.trainingType}</p></div>
+          <div class="item"><h3>Рабочие повторы</h3><p>${summary.bestRepRange}; дополнительно ${summary.secondaryRepRange}</p></div>
+          <div class="item"><h3>Прогрессия</h3><p>${summary.progression}</p></div>
+          <div class="item"><h3>Частота и кардио</h3><p>${summary.frequency}. ${summary.cardio}</p></div>
         </div>
         <div style="height:12px"></div>
         <div class="list">
-          <div class="item"><h3>Связки и сухожилия</h3><p>${genetic.tendonRisk}. Перед первым рабочим упражнением держи 2-3 разминочных подхода и не прыгай по весу больше чем на 2.5-5%.</p></div>
-          <div class="item"><h3>Кофеин</h3><p>${genetic.caffeine}. Ориентир: 30-45 минут до тренировки, если это не портит сон.</p></div>
-          <div class="item"><h3>Аппетит и талия</h3><p>${genetic.appetiteControl}. Для набора массы цель — вес растёт плавно, талия не улетает быстрее прогресса в зале.</p></div>
+          <div class="item"><h3>Восстановление</h3><p>${summary.recovery}</p></div>
+          <div class="item"><h3>Питание</h3><p>${summary.nutrition}</p></div>
+          <div class="item"><h3>Кофеин</h3><p>${summary.caffeine}</p></div>
+          <div class="item"><h3>Связки и сухожилия</h3><p>${summary.injuryFocus}</p></div>
+          <div class="item"><h3>Ключевые маркеры</h3><div class="tag-row">${markerTags}</div></div>
         </div>
       </div>
       <div class="panel pad">
@@ -615,11 +642,18 @@ function renderGenetics() {
           </div>
         </div>
         <div class="list">
-          ${genetic.coachRules.map((rule, index) => `<div class="item"><h3>${index + 1}. Правило</h3><p>${rule}</p></div>`).join("")}
+          ${renderRuleGroup("Тренировки", rules.workoutDecision)}
+          ${renderRuleGroup("Питание", rules.nutritionDecision)}
+          ${renderRuleGroup("Добавки", rules.supplementsDecision)}
+          <div class="item"><h3>Маркеры</h3>${markers.map((marker) => `<p><b>${marker.gene}</b> · ${marker.snp} · ${marker.result}. ${marker.impact}</p>`).join("")}</div>
         </div>
       </div>
     </section>
   `;
+}
+
+function renderRuleGroup(title, items = []) {
+  return `<div class="item"><h3>${title}</h3>${items.map((item) => `<p>${item}</p>`).join("")}</div>`;
 }
 
 function renderWorkout() {
@@ -1165,13 +1199,20 @@ function analyzeSession(sessionId) {
   });
 
   const highRpeCount = items.filter((item) => Number(item.rpe) >= 9).length;
+  const summary = genetic?.geneticCoachSummary || {};
+  const rules = genetic?.coachRules || {};
+  const markers = genetic?.markers || [];
+  const markerImpact = (gene) => markers.find((marker) => marker.gene === gene)?.impact;
   const geneticAdvice = [
-    "Рабочий диапазон держим 8-15 повторений, прогрессия только плавная: 2.5-5%.",
-    "Zone 2: 25-35 минут 2-3 раза в неделю, лучше отдельно от тяжелых ног.",
-    `Контроль массы: талия ${user().waist || "—"} см, аппетит ${user().appetite || "—"}. Если талия растет быстро, не добавляй калории агрессивно.`,
-    "Кофеин можно за 30-45 минут до тренировки, если он не ухудшает сон.",
-    "Связки и сухожилия: 2-3 разминочных подхода и без резких скачков веса."
-  ];
+    summary.bestRepRange ? `ACTN3: ${summary.bestRepRange}; ${markerImpact("ACTN3") || "меньше частых 1ПМ."}` : "",
+    summary.progression || "Плавная прогрессия 2.5-5%.",
+    summary.cardio || "Zone 2 2-3 раза в неделю.",
+    `FTO: ${markerImpact("FTO") || "контроль аппетита и талии"}. Текущая талия ${user().waist || "—"} см, аппетит ${user().appetite || "—"}.`,
+    `CYP1A2: ${summary.caffeine || "кофеин перед тренировкой допустим"}.`,
+    `COL5A1: ${markerImpact("COL5A1") || summary.injuryFocus || "беречь связки/сухожилия."}`,
+    rules.nutritionDecision?.[0] || "",
+    rules.supplementsDecision?.[0] || ""
+  ].filter(Boolean);
   const coachComment = (highRpeCount >= 2
     ? "Много RPE 9-10. Следующую тренировку лучше сделать разгрузочной: минус 7-10% веса и без отказа."
     : "План обновлён по фактическим повторам и RPE. Держи технику и не гони вес быстрее восстановления.")
@@ -1361,4 +1402,8 @@ function escapeAttr(value) {
   return String(value ?? "").replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
 }
 
-render();
+loadState().then((loadedState) => {
+  state = loadedState;
+  saveState();
+  render();
+});

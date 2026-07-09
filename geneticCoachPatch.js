@@ -1,48 +1,196 @@
-const geneticCoachRules = {
-  repRange: {
-    min: 8,
-    max: 15,
-    message: "Keep hypertrophy work mostly in the 8-15 rep range."
+
+// Garden Fitness Coach — genetic profile patch
+// Вариант 1: положить рядом с основным bundle и импортировать.
+// Вариант 2: вставить содержимое объекта GENETIC_PROFILE в App/state.
+
+export const GENETIC_PROFILE = {
+  "profileVersion": "1.0",
+  "source": "Genotek VCF / parsed locally",
+  "person": {
+    "name": "Сергей",
+    "sex": "male"
   },
-  progression: {
-    minPercent: 2.5,
-    maxPercent: 5,
-    message: "Increase load by 2.5-5% only after clean completion at RPE below 8."
+  "geneticCoachSummary": {
+    "trainingType": "сила + гипертрофия + силовая выносливость",
+    "bestRepRange": "8–15 повторений",
+    "secondaryRepRange": "6–8 повторений без частых максимумов",
+    "progression": "плавная: +2.5–5% к весу при выполнении всех подходов",
+    "frequency": "каждая мышечная группа 2 раза в неделю",
+    "cardio": "Zone 2 2–3 раза в неделю, интервалы не чаще 1 раза в неделю",
+    "recovery": "не гнаться за отказом в каждом подходе; контроль сна, пульса и субъективной усталости",
+    "nutrition": "высокий белок, контроль аппетита и талии; углеводы лучше привязывать к тренировкам",
+    "caffeine": "кофеин перед тренировкой допустим: быстрый метаболизм CYP1A2",
+    "injuryFocus": "сухожилия/связки: обязательная разминка, техника, постепенная прогрессия"
   },
-  zone2: {
-    frequencyPerWeek: "2-3",
-    durationMinutes: "25-35",
-    message: "Add Zone 2 without compromising leg-day recovery."
-  },
-  appetiteAndWaist: {
-    message: "Track appetite and waist weekly. Fast waist gain means the surplus is too aggressive."
-  },
-  caffeine: {
-    timing: "30-45 minutes pre-workout",
-    message: "Use caffeine before training only if sleep and blood pressure stay normal."
-  },
-  connectiveTissue: {
-    message: "Protect tendons and ligaments with warm-up sets and no sudden load jumps."
+  "markers": [
+    {
+      "gene": "ACTN3",
+      "snp": "rs1815739",
+      "genotype": "CC in VCF ref/alt, clinically XX/R577X interpretation",
+      "result": "выносливый профиль",
+      "impact": "меньше упор на 1ПМ и взрывную силу; лучше средние повторения и объем"
+    },
+    {
+      "gene": "CYP1A2",
+      "snp": "rs762551",
+      "genotype": "AA",
+      "result": "быстрый метаболизм кофеина",
+      "impact": "кофеин может заметно помогать перед тренировкой"
+    },
+    {
+      "gene": "FTO",
+      "snp": "rs9939609",
+      "genotype": "AA",
+      "result": "предрасположенность к набору веса/аппетиту",
+      "impact": "контроль калорий, белка, клетчатки и окружности талии"
+    },
+    {
+      "gene": "TCF7L2",
+      "snp": "rs7903146",
+      "genotype": "CC",
+      "result": "нет повышенного риска по этому SNP",
+      "impact": "углеводы можно использовать вокруг тренировок"
+    },
+    {
+      "gene": "LCT",
+      "snp": "rs4988235",
+      "genotype": "GA",
+      "result": "вероятная переносимость лактозы",
+      "impact": "молочные продукты допустимы по самочувствию"
+    },
+    {
+      "gene": "MTHFR",
+      "snp": "rs1801133",
+      "genotype": "GG",
+      "result": "C677T без риска",
+      "impact": "нет признака сниженного обмена фолатов по этому варианту"
+    },
+    {
+      "gene": "MTHFR",
+      "snp": "rs1801131",
+      "genotype": "TG",
+      "result": "A1298C гетерозигота",
+      "impact": "обычно мягкий фактор; смотреть гомоцистеин, B12, B9 по анализам"
+    },
+    {
+      "gene": "COL5A1",
+      "snp": "rs12722",
+      "genotype": "TT",
+      "result": "возможная склонность к травмам связок/сухожилий",
+      "impact": "разминка, контроль объема, медленная прогрессия"
+    },
+    {
+      "gene": "COL1A1",
+      "snp": "rs1800012",
+      "genotype": "CC",
+      "result": "без повышенного риска по этому SNP",
+      "impact": "нейтрально"
+    },
+    {
+      "gene": "AMPD1",
+      "snp": "rs17602729",
+      "genotype": "GA",
+      "result": "гетерозигота",
+      "impact": "следить за восстановлением после интенсивных нагрузок"
+    },
+    {
+      "gene": "BDNF",
+      "snp": "rs6265",
+      "genotype": "CT",
+      "result": "средняя чувствительность к стрессу/восстановлению",
+      "impact": "лучше работает стабильный режим и постепенность"
+    },
+    {
+      "gene": "COMT",
+      "snp": "rs4680",
+      "genotype": "GA",
+      "result": "средний тип стресс-реакции",
+      "impact": "баланс интенсивности и восстановления"
+    },
+    {
+      "gene": "VDR/GC",
+      "snp": "rs2282679",
+      "genotype": "GT",
+      "result": "возможна склонность к более низкому витамину D",
+      "impact": "контролировать 25(OH)D"
+    },
+    {
+      "gene": "HFE",
+      "snp": "rs1799945",
+      "genotype": "CC",
+      "result": "без риска H63D",
+      "impact": "железо не принимать без ферритина/ОЖСС"
+    },
+    {
+      "gene": "TMPRSS6",
+      "snp": "rs855791",
+      "genotype": "AG",
+      "result": "возможное влияние на обмен железа",
+      "impact": "контроль ферритина при усталости"
+    },
+    {
+      "gene": "APOA2",
+      "snp": "rs5082",
+      "genotype": "AA",
+      "result": "чувствительность к насыщенным жирам",
+      "impact": "держать насыщенные жиры умеренно"
+    },
+    {
+      "gene": "APOA5",
+      "snp": "rs662799",
+      "genotype": "AA",
+      "result": "возможная склонность к повышенным триглицеридам",
+      "impact": "контроль сахара/алкоголя/рафинированных углеводов"
+    }
+  ],
+  "coachRules": {
+    "workoutDecision": [
+      "Если выполнены все подходы в верхней границе повторений — увеличить вес на 2.5–5%.",
+      "Если техника проседает — не повышать вес, добавить повторения или оставить нагрузку.",
+      "Отказные подходы не чаще 1–2 раз на тренировку и не в базовых движениях постоянно.",
+      "После тяжелой тренировки ног/спины давать 48–72 часа до повторной высокой нагрузки."
+    ],
+    "nutritionDecision": [
+      "Белок: 2.0–2.2 г/кг массы тела.",
+      "Клетчатка: 25–35 г/сутки.",
+      "Углеводы — преимущественно до/после тренировки.",
+      "При росте талии быстрее веса — снизить калории на 150–250 ккал."
+    ],
+    "supplementsDecision": [
+      "Креатин 3–5 г/сутки — подходит как базовая добавка.",
+      "Кофеин 150–250 мг за 30–45 минут до тренировки, не поздно вечером.",
+      "B6 не добавлять без причины: у семьи уже был высокий B6 в анализах.",
+      "Витамин D — только по 25(OH)D."
+    ]
   }
 };
 
-function buildGeneticCoachComment({ highRpeCount = 0, waist, appetite, sleepQuality } = {}) {
-  const recoveryNote = highRpeCount >= 2
-    ? "High RPE detected: consider a deload or hold the load."
-    : "Progress can continue if technique stays clean.";
-
-  return [
-    recoveryNote,
-    geneticCoachRules.repRange.message,
-    geneticCoachRules.progression.message,
-    geneticCoachRules.zone2.message,
-    `Waist: ${waist || "not set"}, appetite: ${appetite || "not set"}, sleep: ${sleepQuality || "not set"}/10.`,
-    geneticCoachRules.caffeine.message,
-    geneticCoachRules.connectiveTissue.message
-  ].join(" ");
+export function applyGeneticCoachProfile(appState = {}) {
+  return {
+    ...appState,
+    geneticProfile: GENETIC_PROFILE,
+    coachSettings: {
+      ...(appState.coachSettings || {}),
+      repRangePrimary: [8, 15],
+      repRangeSecondary: [6, 8],
+      progressionPercent: [2.5, 5],
+      muscleFrequencyPerWeek: 2,
+      cardioZone2PerWeek: [2, 3],
+      hiitPerWeekMax: 1,
+      proteinGramPerKg: [2.0, 2.2],
+      caffeinePreWorkoutMg: [150, 250],
+      injuryRiskMode: 'tendon_ligament_care',
+      avoidFrequentOneRepMax: true
+    }
+  };
 }
 
-if (typeof window !== "undefined") {
-  window.geneticCoachRules = geneticCoachRules;
-  window.buildGeneticCoachComment = buildGeneticCoachComment;
+export function getGeneticCoachPrompt() {
+  return `Ты персональный фитнес-тренер. Учитывай генетический профиль пользователя:
+- ACTN3: выносливый профиль, лучше 8–15 повторений, меньше частых 1ПМ.
+- FTO: выше риск аппетита/набора веса, нужен контроль калорий, белка и талии.
+- CYP1A2: быстрый метаболизм кофеина, кофеин перед тренировкой допустим.
+- COL5A1: беречь связки/сухожилия, разминка и плавная прогрессия обязательны.
+- AMPD1/BDNF/COMT: не перегружать интенсивностью, следить за восстановлением.
+Давай рекомендации по весам, подходам, повторам, питанию и восстановлению с учетом этих ограничений.`;
 }
