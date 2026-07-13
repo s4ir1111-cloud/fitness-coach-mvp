@@ -487,6 +487,17 @@ function todayDay() {
   return orderedDays()[program().currentDayIndex % orderedDays().length];
 }
 
+function dayById(dayId) {
+  return orderedDays().find((day) => day.id === dayId);
+}
+
+function setCurrentDay(dayId) {
+  const index = orderedDays().findIndex((day) => day.id === dayId);
+  if (index < 0) return;
+  program().currentDayIndex = index;
+  saveState();
+}
+
 function exerciseById(id) {
   return state.exercises.find((exercise) => exercise.id === id);
 }
@@ -572,6 +583,8 @@ function renderHome() {
           ${day.exercises.map((item) => `<span class="tag">${exerciseById(item.exerciseId).name} ${formatWeight(item.weight)}</span>`).join("")}
         </div>
         <div style="height:14px"></div>
+        ${renderWorkoutDayPicker(day.id)}
+        <div style="height:10px"></div>
         <button class="primary" data-action="start-workout">Начать тренировку</button>
       </div>
       <div class="panel pad">
@@ -631,6 +644,17 @@ function renderHome() {
   `;
 }
 
+function renderWorkoutDayPicker(selectedDayId) {
+  return `
+    <div class="field">
+      <label>Выбрать день</label>
+      <select data-action="select-workout-day">
+        ${orderedDays().map((day) => `<option value="${day.id}" ${day.id === selectedDayId ? "selected" : ""}>День ${day.order} — ${day.title}</option>`).join("")}
+      </select>
+    </div>
+  `;
+}
+
 function renderGenetics() {
   const genetic = geneticProfile();
   const summary = genetic.geneticCoachSummary || {};
@@ -685,14 +709,17 @@ function renderRuleGroup(title, items = []) {
 
 function renderWorkout() {
   if (!activeSession) {
+    const day = todayDay();
     return `
       <section class="panel pad">
         <div class="section-title">
           <div>
             <h2>Текущая тренировка</h2>
-            <p>Готово к старту: ${todayDay().title}</p>
+            <p>Готово к старту: ${day.title}</p>
           </div>
         </div>
+        ${renderWorkoutDayPicker(day.id)}
+        <div style="height:12px"></div>
         <button class="primary" data-action="start-workout">Начать тренировку</button>
       </section>
     `;
@@ -797,6 +824,7 @@ function renderProgramDay(day) {
           <h3>День ${day.order}: ${day.title}</h3>
           <p>${day.focus}</p>
         </div>
+        <button class="secondary" data-action="start-workout-day" data-day-id="${day.id}">Начать</button>
       </div>
       <div class="list" style="margin-top:10px">
         ${day.exercises.map((item) => {
@@ -1038,7 +1066,9 @@ function bindEvents() {
 
   document.querySelectorAll("[data-action]").forEach((element) => {
     const action = element.dataset.action;
-    if (["update-set", "set-rpe", "set-comment", "update-day-title", "update-plan"].includes(action)) {
+    if (action === "select-workout-day") {
+      element.addEventListener("change", handleAction);
+    } else if (["update-set", "set-rpe", "set-comment", "update-day-title", "update-plan"].includes(action)) {
       element.addEventListener("input", handleAction);
     } else {
       element.addEventListener("click", handleAction);
@@ -1072,6 +1102,8 @@ function handleAction(event) {
   const action = target.dataset.action;
   const handlers = {
     "start-workout": startWorkout,
+    "start-workout-day": () => startWorkout(target.dataset.dayId),
+    "select-workout-day": () => selectWorkoutDay(target.value),
     "finish-workout": finishWorkout,
     "skip-exercise": () => toggleSkip(target.dataset.id),
     "add-set": () => addSet(target.dataset.id),
@@ -1090,8 +1122,14 @@ function handleAction(event) {
   handlers[action]?.();
 }
 
-function startWorkout() {
-  const day = todayDay();
+function selectWorkoutDay(dayId) {
+  setCurrentDay(dayId);
+  render();
+}
+
+function startWorkout(dayId) {
+  const day = dayById(dayId) || todayDay();
+  setCurrentDay(day.id);
   activeSession = {
     id: crypto.randomUUID(),
     dayId: day.id,
