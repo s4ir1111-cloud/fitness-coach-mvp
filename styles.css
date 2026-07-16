@@ -447,6 +447,47 @@ input[type="range"] {
   gap: 8px;
 }
 
+.timer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.timer-card {
+  min-height: 86px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0c1017;
+}
+
+.timer-card.active {
+  border-color: rgba(79, 210, 162, 0.55);
+  background: rgba(79, 210, 162, 0.08);
+}
+
+.timer-card span,
+.timer-card small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.timer-card strong {
+  display: block;
+  margin: 4px 0;
+  color: var(--text);
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.timer-reset {
+  grid-column: 1 / -1;
+}
+
 .history-row {
   display: grid;
   gap: 8px;
@@ -550,6 +591,14 @@ input[type="range"] {
 
   .admin-exercise {
     grid-template-columns: 1fr 58px 58px;
+  }
+
+  .timer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .timer-card strong {
+    font-size: 28px;
   }
 
   .hide-small {

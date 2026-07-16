@@ -433,6 +433,8 @@ function targetReps(reps) {
 let state;
 let activeTab = "home";
 let activeSession = null;
+let activeRestTimer = null;
+let timerLoop = null;
 
 async function loadState() {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -548,6 +550,7 @@ function render() {
     <nav class="nav">${navItems().map(navButton).join("")}</nav>
   `;
   bindEvents();
+  ensureTimerLoop();
 }
 
 function navButton([id, icon, label]) {
@@ -734,6 +737,8 @@ function renderWorkout() {
             <p>Фиксируй факт по каждому подходу. RPE 1-10 влияет на следующую нагрузку.</p>
           </div>
         </div>
+        ${renderTimerPanel()}
+        <div style="height:12px"></div>
         <div class="list">
           ${activeSession.exercises.map(renderActiveExercise).join("")}
         </div>
@@ -742,6 +747,79 @@ function renderWorkout() {
       </div>
     </section>
   `;
+}
+
+function renderTimerPanel() {
+  const rest = activeRestInfo();
+  return `
+    <div class="timer-grid">
+      <div class="timer-card">
+        <span>Время тренировки</span>
+        <strong data-elapsed data-started-at="${activeSession.startedAt}">${formatDuration(elapsedWorkoutSeconds())}</strong>
+      </div>
+      <div class="timer-card ${rest ? "active" : ""}">
+        <span>Пауза между подходами</span>
+        <strong data-rest-left>${rest ? formatDuration(rest.remaining) : "00:00"}</strong>
+        <small data-rest-label>${rest ? `${rest.exerciseName} · ${formatDuration(rest.duration)}` : "отметь подход или нажми «Пауза»"}</small>
+      </div>
+      <button class="ghost timer-reset" data-action="clear-rest">${rest ? "Сбросить паузу" : "Без паузы"}</button>
+    </div>
+  `;
+}
+
+function elapsedWorkoutSeconds() {
+  if (!activeSession?.startedAt) return 0;
+  return Math.max(0, Math.round((Date.now() - new Date(activeSession.startedAt).getTime()) / 1000));
+}
+
+function activeRestInfo() {
+  if (!activeRestTimer) return null;
+  const elapsed = Math.max(0, Math.round((Date.now() - activeRestTimer.startedAt) / 1000));
+  const duration = Number(activeRestTimer.duration) || 90;
+  const remaining = Math.max(0, duration - elapsed);
+  const exercise = activeSession?.exercises.find((item) => item.id === activeRestTimer.exerciseId);
+  const exerciseName = exercise ? exerciseById(exercise.exerciseId).name : "Пауза";
+  return { ...activeRestTimer, elapsed, duration, remaining, exerciseName };
+}
+
+function ensureTimerLoop() {
+  if (!activeSession) {
+    if (timerLoop) clearInterval(timerLoop);
+    timerLoop = null;
+    return;
+  }
+  if (!timerLoop) timerLoop = setInterval(updateTimers, 1000);
+  updateTimers();
+}
+
+function updateTimers() {
+  const elapsedNode = document.querySelector("[data-elapsed]");
+  if (elapsedNode) elapsedNode.textContent = formatDuration(elapsedWorkoutSeconds());
+
+  const rest = activeRestInfo();
+  const restNode = document.querySelector("[data-rest-left]");
+  const restLabel = document.querySelector("[data-rest-label]");
+  if (restNode) restNode.textContent = rest ? formatDuration(rest.remaining) : "00:00";
+  if (restLabel) {
+    restLabel.textContent = rest
+      ? `${rest.exerciseName} · ${rest.remaining > 0 ? "осталось" : "готово"} из ${formatDuration(rest.duration)}`
+      : "отметь подход или нажми «Пауза»";
+  }
+}
+
+function startRestTimer(exerciseId) {
+  const item = activeSession?.exercises.find((exercise) => exercise.id === exerciseId);
+  if (!item) return;
+  activeRestTimer = {
+    exerciseId,
+    startedAt: Date.now(),
+    duration: Number(item.rest) || 90
+  };
+}
+
+function clearRestTimer() {
+  activeRestTimer = null;
+  render();
 }
 
 function renderActiveExercise(item) {
@@ -771,6 +849,7 @@ function renderActiveExercise(item) {
       </div>
       <div class="actions">
         <button class="secondary" data-action="add-set" data-id="${item.id}">+ Подход</button>
+        <button class="secondary" data-action="start-rest" data-id="${item.id}">Пауза ${formatDuration(Number(item.rest))}</button>
         <button class="danger" data-action="remove-set" data-id="${item.id}">Удалить подход</button>
       </div>
     </article>
@@ -901,7 +980,7 @@ function renderHistoryRow(session) {
           <h3>${session.dayTitle}</h3>
           <p>${formatDate(session.finishedAt)}</p>
         </div>
-        <span class="tag good">${Math.round(session.volume)} объём</span>
+        <span class="tag good">${Math.round(session.volume)} объём · ${formatDuration(session.durationSeconds || 0)}</span>
       </div>
       ${renderSessionSummary(session)}
     </article>
@@ -1108,6 +1187,11 @@ function handleAction(event) {
     "skip-exercise": () => toggleSkip(target.dataset.id),
     "add-set": () => addSet(target.dataset.id),
     "remove-set": () => removeSet(target.dataset.id),
+    "start-rest": () => {
+      startRestTimer(target.dataset.id);
+      render();
+    },
+    "clear-rest": () => clearRestTimer(),
     "toggle-set": () => toggleSet(target.dataset.id, target.dataset.set),
     "update-set": () => updateSet(target.dataset.id, target.dataset.set, target.dataset.field, target.value),
     "set-rpe": () => updateActiveExercise(target.dataset.id, { rpe: Number(target.value) }),
@@ -1130,6 +1214,7 @@ function selectWorkoutDay(dayId) {
 function startWorkout(dayId) {
   const day = dayById(dayId) || todayDay();
   setCurrentDay(day.id);
+  activeRestTimer = null;
   activeSession = {
     id: crypto.randomUUID(),
     dayId: day.id,
@@ -1168,6 +1253,7 @@ function finishWorkout() {
     dayTitle: activeSession.dayTitle,
     startedAt: activeSession.startedAt,
     finishedAt,
+    durationSeconds: Math.round((new Date(finishedAt) - new Date(activeSession.startedAt)) / 1000),
     volume: 0,
     completed: true
   };
@@ -1205,6 +1291,7 @@ function finishWorkout() {
   state.trainer_recommendations.push(recommendation);
   advanceProgramDay();
   activeSession = null;
+  activeRestTimer = null;
   activeTab = "home";
   saveState();
   render();
@@ -1339,6 +1426,7 @@ function removeSet(id) {
 function toggleSet(exerciseId, setId) {
   const set = activeSession.exercises.find((item) => item.id === exerciseId).sets.find((item) => item.id === setId);
   set.done = !set.done;
+  if (set.done) startRestTimer(exerciseId);
   render();
 }
 
@@ -1461,6 +1549,17 @@ function formatWeight(value) {
 
 function formatDate(value) {
   return new Date(value).toLocaleString("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function formatDuration(totalSeconds) {
+  const safeSeconds = Math.max(0, Math.round(Number(totalSeconds) || 0));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+  const mm = String(minutes).padStart(2, "0");
+  const ss = String(seconds).padStart(2, "0");
+  if (!hours) return `${mm}:${ss}`;
+  return `${hours}:${mm}:${ss}`;
 }
 
 function escapeAttr(value) {
