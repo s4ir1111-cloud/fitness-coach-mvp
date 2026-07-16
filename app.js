@@ -454,15 +454,24 @@ function parseState(raw, fallback) {
 async function applyBundledGeneticProfile(appState) {
   try {
     const response = await fetch("./genetic_profile_garden_fitness.json", { cache: "no-store" });
-    if (!response.ok) return appState;
+    if (!response.ok) return normalizeState(appState);
     const profile = await response.json();
-    return {
+    return normalizeState({
       ...appState,
       genetic_profiles: [profile]
-    };
+    });
   } catch {
-    return appState;
+    return normalizeState(appState);
   }
+}
+
+function normalizeState(appState) {
+  const workoutDayCount = Array.isArray(appState.workout_days) ? appState.workout_days.length : 0;
+  const profile = appState.users?.[0];
+  if (profile && workoutDayCount > 0 && Number(profile.frequency) !== workoutDayCount) {
+    profile.frequency = workoutDayCount;
+  }
+  return appState;
 }
 
 function saveState() {
@@ -483,6 +492,10 @@ function program() {
 
 function orderedDays() {
   return [...state.workout_days].sort((a, b) => a.order - b.order);
+}
+
+function programFrequency() {
+  return orderedDays().length;
 }
 
 function todayDay() {
@@ -540,7 +553,7 @@ function render() {
           <div class="brand-mark">CF</div>
           <div>
             <h1>CoachFit</h1>
-            <p>${user().goal} · ${user().frequency} трен./нед.</p>
+            <p>${user().goal} · ${programFrequency()} трен./нед.</p>
           </div>
         </div>
         <div class="desktop-tabs">${navItems().map(navButton).join("")}</div>
@@ -1029,7 +1042,10 @@ function renderProfile() {
           <label>Уровень</label>
           <select name="level">${["новичок", "средний", "продвинутый"].map((value) => option(value, profile.level)).join("")}</select>
         </div>
-        ${field("frequency", "Тренировок в неделю", profile.frequency, "number")}
+        <div class="field">
+          <label>Силовых дней в программе</label>
+          <input name="frequency" type="number" value="${programFrequency()}" readonly />
+        </div>
         <div class="field full">
           <label>Ограничения и травмы</label>
           <textarea name="limitations">${profile.limitations}</textarea>
@@ -1168,7 +1184,7 @@ function bindEvents() {
         goal: data.get("goal"),
         appetite: data.get("appetite"),
         level: data.get("level"),
-        frequency: Number(data.get("frequency")),
+        frequency: programFrequency(),
         limitations: data.get("limitations")
       });
       saveState();
