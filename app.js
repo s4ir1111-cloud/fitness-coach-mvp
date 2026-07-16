@@ -430,6 +430,171 @@ function targetReps(reps) {
   return Number(numbers[numbers.length - 1]);
 }
 
+function programTemplate(frequency) {
+  const templates = {
+    3: {
+      name: "Генетический fullbody — 3 дня",
+      template: "Верх / Низ / Фулбоди + Zone 2 2–3 раза в неделю",
+      days: [
+        {
+          title: "Верх",
+          focus: "грудь/спина/дельты/руки",
+          exercises: [
+            planExercise("ex-bench", 3, "8-10", 0, 150, "Основное движение без частых 1ПМ: оставь 1–2 повтора в запасе."),
+            planExercise("ex-row", 3, "8-12", 0, 120, "Горизонтальная тяга для толщины спины, без рывков корпусом."),
+            planExercise("ex-incline-db-press", 3, "10-12", 0, 120, "Верх груди, гантели повышай плавно на 1–2 кг."),
+            planExercise("ex-lat-pulldown", 3, "10-12", 0, 120, "Тяни локтями вниз, плечи не поднимай."),
+            planExercise("ex-lateral-raise", 2, "12-15", 0, 75, "Средняя дельта, чистая техника важнее веса."),
+            planExercise("ex-triceps-pushdown", 2, "10-15", 0, 75, "Трицепс дозированно, без боли в локтях."),
+            planExercise("ex-hammer-curl", 2, "10-15", 0, 75, "Бицепс как добивка, не до отказа.")
+          ]
+        },
+        {
+          title: "Низ",
+          focus: "квадрицепс/задняя цепь/икры",
+          exercises: [
+            planExercise("ex-hack-squat", 3, "8-12", 0, 150, "Главное движение ног, колени по линии стоп."),
+            planExercise("ex-rdl", 3, "8-12", 0, 150, "Задняя цепь под контролем, без резкого растяжения."),
+            planExercise("ex-leg-press", 2, "10-15", 0, 120, "Добор объема ног, поясница прижата."),
+            planExercise("ex-lying-leg-curl", 3, "10-15", 0, 90, "Бицепс бедра, плавная амплитуда."),
+            planExercise("ex-calf-raise", 3, "10-15", 0, 60, "Икры, полная амплитуда и пауза вверху.")
+          ]
+        },
+        {
+          title: "Фулбоди",
+          focus: "второй стимул всего тела",
+          exercises: [
+            planExercise("ex-press", 3, "8-10", 0, 150, "Плечевой жим без переразгибания поясницы."),
+            planExercise("ex-one-arm-db-row", 3, "10-12", 0, 120, "Контроль корпуса, тяни локоть к тазу."),
+            planExercise("ex-pec-deck", 2, "10-15", 0, 75, "Грудь без тяжелой нагрузки на связки."),
+            planExercise("ex-bulgarian-split-squat", 2, "8-12", 0, 120, "Односторонняя работа для ног и ягодиц."),
+            planExercise("ex-seated-leg-curl", 2, "10-15", 0, 90, "Задняя поверхность бедра, без рывков."),
+            planExercise("ex-face-pull", 2, "12-15", 0, 60, "Ротаторы плеча и здоровье лопаток.")
+          ]
+        }
+      ]
+    },
+    4: {
+      name: "Генетический upper/lower — 4 дня",
+      template: "Верх A / Низ A / Верх B / Низ B + Zone 2 2–3 раза в неделю",
+      days: [
+        {
+          title: "Верх A",
+          focus: "грудь/спина/дельты/руки",
+          exercises: [
+            planExercise("ex-bench", 3, "8-10", 0, 150, "Основное движение без частых 1ПМ: оставь 1–2 повтора в запасе, прогресс +2.5–5%."),
+            planExercise("ex-row", 3, "8-12", 0, 120, "Тяни локтями, пауза в сведении лопаток, без рывков корпусом."),
+            planExercise("ex-incline-db-press", 3, "10-12", 0, 120, "Гантели повышай плавно на 1–2 кг после чистого выполнения."),
+            planExercise("ex-lat-pulldown", 3, "10-12", 0, 120, "Грудь раскрыта, плечи вниз, не превращай упражнение в сгибание рук."),
+            planExercise("ex-lateral-raise", 2, "12-15", 0, 75, "Средняя дельта, легкий вес, без инерции."),
+            planExercise("ex-triceps-pushdown", 2, "10-15", 0, 75, "Трицепс дозированно, без боли в локтях."),
+            planExercise("ex-hammer-curl", 2, "10-15", 0, 75, "Руки как добивка, не отдельный приоритет дня.")
+          ]
+        },
+        {
+          title: "Низ A",
+          focus: "квадрицепс/задняя цепь/икры",
+          exercises: [
+            planExercise("ex-hack-squat", 3, "8-12", 0, 150, "Главное движение ног: техника и колени по линии стоп важнее веса."),
+            planExercise("ex-rdl", 3, "8-12", 0, 150, "Задняя цепь под контролем, без рывков и без отказа."),
+            planExercise("ex-leg-press", 2, "10-15", 0, 120, "Добор объема квадрицепса, поясница прижата."),
+            planExercise("ex-lying-leg-curl", 3, "10-15", 0, 90, "Бицепс бедра, плавная амплитуда и пауза вверху."),
+            planExercise("ex-calf-raise", 3, "10-15", 0, 60, "Полная амплитуда, без пружины.")
+          ]
+        },
+        {
+          title: "Верх B",
+          focus: "плечи/спина/грудь/руки",
+          exercises: [
+            planExercise("ex-press", 3, "8-10", 0, 150, "Плечевой жим без переразгибания поясницы, запас 1–2 повтора."),
+            planExercise("ex-one-arm-db-row", 3, "10-12", 0, 120, "Контроль корпуса, тяни локоть к тазу."),
+            planExercise("ex-pec-deck", 3, "10-15", 0, 75, "Грудь во второй раз за цикл, без тяжелой нагрузки на связки."),
+            planExercise("ex-rear-delt-fly", 3, "12-15", 0, 75, "Задняя дельта и здоровье плеч, медленно и чисто."),
+            planExercise("ex-face-pull", 2, "12-15", 0, 60, "Ротаторы плеча и лопатки, вес легкий."),
+            planExercise("ex-ez-curl", 2, "10-15", 0, 75, "Бицепс как умеренная добивка."),
+            planExercise("ex-overhead-extension", 2, "10-15", 0, 75, "Длинная головка трицепса, без боли в локтях.")
+          ]
+        },
+        {
+          title: "Низ B",
+          focus: "ягодицы/задняя цепь/квадрицепс",
+          exercises: [
+            planExercise("ex-leg-press", 3, "10-12", 0, 150, "Второй стимул ног за цикл, не в отказ."),
+            planExercise("ex-bulgarian-split-squat", 3, "8-12", 0, 120, "Односторонняя работа для ног и ягодиц, техника важнее веса."),
+            planExercise("ex-seated-leg-curl", 3, "10-15", 0, 90, "Задняя поверхность бедра, плавно и без рывка."),
+            planExercise("ex-leg-extension", 2, "12-15", 0, 75, "Добор квадрицепса, пауза вверху."),
+            planExercise("ex-back-extension", 2, "10-15", 0, 90, "Легкая задняя цепь, не переразгибай поясницу."),
+            planExercise("ex-calf-raise", 3, "10-15", 0, 60, "Икры второй раз за цикл, полная амплитуда.")
+          ]
+        }
+      ]
+    },
+    5: {
+      name: "Генетический split — 5 дней",
+      template: "Грудь+трицепс / Спина+бицепс / Ноги / Плечи / Руки-памп",
+      days: [
+        {
+          title: "Грудь + трицепс",
+          focus: "грудь/трицепс",
+          exercises: [
+            planExercise("ex-bench", 3, "8-10", 0, 150, "Главный жим без отказа, держи 1–2 повтора в запасе."),
+            planExercise("ex-incline-db-press", 3, "10-12", 0, 120, "Верх груди, прогресс гантелей на 1–2 кг."),
+            planExercise("ex-pec-deck", 3, "12-15", 0, 75, "Добор груди без лишней нагрузки на плечи."),
+            planExercise("ex-triceps-pushdown", 3, "10-12", 0, 75, "Локти прижаты, без рывков."),
+            planExercise("ex-overhead-extension", 2, "10-12", 0, 75, "Длинная головка трицепса, без боли в локтях.")
+          ]
+        },
+        {
+          title: "Спина + бицепс",
+          focus: "спина/бицепс",
+          exercises: [
+            planExercise("ex-lat-pulldown", 3, "10-12", 0, 120, "Широчайшие, тяни локтями вниз."),
+            planExercise("ex-row", 3, "8-12", 0, 120, "Толщина спины, пауза в сведении лопаток."),
+            planExercise("ex-one-arm-db-row", 3, "10-12", 0, 120, "Контроль корпуса, без разворота тазом."),
+            planExercise("ex-ez-curl", 3, "10-12", 0, 75, "Бицепс без читинга."),
+            planExercise("ex-hammer-curl", 2, "12-15", 0, 75, "Плечелучевая и предплечье, спокойный негатив.")
+          ]
+        },
+        {
+          title: "Ноги",
+          focus: "квадрицепс/ягодицы/задняя цепь/икры",
+          exercises: [
+            planExercise("ex-hack-squat", 3, "8-12", 0, 150, "Главное движение ног, техника важнее веса."),
+            planExercise("ex-rdl", 3, "8-12", 0, 150, "Задняя цепь под контролем, не тяни в отказ."),
+            planExercise("ex-leg-press", 3, "10-15", 0, 120, "Объем ног, поясница прижата."),
+            planExercise("ex-lying-leg-curl", 3, "10-15", 0, 90, "Бицепс бедра, плавная амплитуда."),
+            planExercise("ex-calf-raise", 4, "12-15", 0, 60, "Икры, полная амплитуда.")
+          ]
+        },
+        {
+          title: "Плечи",
+          focus: "дельты/трапеции/здоровье плеч",
+          exercises: [
+            planExercise("ex-press", 3, "8-10", 0, 150, "Основной жим плеч без переразгибания поясницы."),
+            planExercise("ex-lateral-raise", 3, "12-15", 0, 75, "Средняя дельта, без махов корпусом."),
+            planExercise("ex-rear-delt-fly", 3, "12-15", 0, 75, "Задняя дельта, медленно и чисто."),
+            planExercise("ex-face-pull", 2, "12-15", 0, 60, "Ротаторы плеча и лопатки."),
+            planExercise("ex-shrug", 2, "10-12", 0, 90, "Трапеции без вращения плечами.")
+          ]
+        },
+        {
+          title: "Руки-памп",
+          focus: "бицепс/трицепс без лишнего отказа",
+          exercises: [
+            planExercise("ex-triceps-pushdown", 3, "12-15", 0, 75, "Памп трицепса, локти стабильны."),
+            planExercise("ex-overhead-extension", 2, "12-15", 0, 75, "Длинная головка трицепса, без боли."),
+            planExercise("ex-ez-curl", 3, "10-12", 0, 75, "Бицепс, строгий подъем."),
+            planExercise("ex-hammer-curl", 3, "12-15", 0, 75, "Молотки, нейтральный хват."),
+            planExercise("ex-scott-curl", 2, "12-15", 0, 75, "Контроль внизу, не бросай вес."),
+            planExercise("ex-dips-close", 2, "макс", 0, 120, "Только без боли в плечах и локтях.")
+          ]
+        }
+      ]
+    }
+  };
+  return templates[Number(frequency)] || templates[4];
+}
+
 let state;
 let activeTab = "home";
 let activeSession = null;
@@ -496,6 +661,21 @@ function orderedDays() {
 
 function programFrequency() {
   return orderedDays().length;
+}
+
+function frequencyOptions() {
+  return [3, 4, 5];
+}
+
+function renderFrequencySelect(selected = programFrequency()) {
+  return `
+    <div class="field">
+      <label>Тренировок в неделю</label>
+      <select data-action="change-frequency" name="frequency">
+        ${frequencyOptions().map((value) => `<option value="${value}" ${Number(selected) === value ? "selected" : ""}>${value} трен./нед.</option>`).join("")}
+      </select>
+    </div>
+  `;
 }
 
 function todayDay() {
@@ -893,6 +1073,8 @@ function renderProgram() {
           </div>
           <button class="secondary" data-action="copy-week">Копия недели</button>
         </div>
+        ${renderFrequencySelect()}
+        <div style="height:12px"></div>
         <div class="list">${orderedDays().map(renderProgramDay).join("")}</div>
       </div>
       <div class="panel pad">
@@ -1042,10 +1224,7 @@ function renderProfile() {
           <label>Уровень</label>
           <select name="level">${["новичок", "средний", "продвинутый"].map((value) => option(value, profile.level)).join("")}</select>
         </div>
-        <div class="field">
-          <label>Силовых дней в программе</label>
-          <input name="frequency" type="number" value="${programFrequency()}" readonly />
-        </div>
+        ${renderFrequencySelect()}
         <div class="field full">
           <label>Ограничения и травмы</label>
           <textarea name="limitations">${profile.limitations}</textarea>
@@ -1082,7 +1261,7 @@ function renderAdmin() {
         </div>
         <div class="item">
           <h3>${program().template}</h3>
-          <p>4 силовых дня: Верх A, Низ A, Верх B, Низ B. Между тяжёлыми днями — отдых или Zone 2, чтобы каждая мышечная группа получала 2 стимула в неделю без лишней нагрузки на связки.</p>
+          <p>${programFrequency()} силовых дня. Меняй частоту в профиле или программе: приложение перестроит сплит, а историю тренировок оставит на месте.</p>
         </div>
       </div>
     </section>
@@ -1161,7 +1340,7 @@ function bindEvents() {
 
   document.querySelectorAll("[data-action]").forEach((element) => {
     const action = element.dataset.action;
-    if (action === "select-workout-day") {
+    if (["select-workout-day", "change-frequency"].includes(action)) {
       element.addEventListener("change", handleAction);
     } else if (["update-set", "set-rpe", "set-comment", "update-day-title", "update-plan"].includes(action)) {
       element.addEventListener("input", handleAction);
@@ -1199,6 +1378,7 @@ function handleAction(event) {
     "start-workout": startWorkout,
     "start-workout-day": () => startWorkout(target.dataset.dayId),
     "select-workout-day": () => selectWorkoutDay(target.value),
+    "change-frequency": () => changeProgramFrequency(target.value),
     "finish-workout": finishWorkout,
     "skip-exercise": () => toggleSkip(target.dataset.id),
     "add-set": () => addSet(target.dataset.id),
@@ -1225,6 +1405,46 @@ function handleAction(event) {
 function selectWorkoutDay(dayId) {
   setCurrentDay(dayId);
   render();
+}
+
+function changeProgramFrequency(value) {
+  const frequency = Number(value);
+  if (!frequencyOptions().includes(frequency)) return;
+  applyProgramTemplate(frequency);
+  activeSession = null;
+  activeRestTimer = null;
+  saveState();
+  render();
+}
+
+function applyProgramTemplate(frequency) {
+  const template = programTemplate(frequency);
+  const weightsByExercise = new Map();
+  orderedDays().forEach((day) => {
+    day.exercises.forEach((item) => {
+      if (Number(item.weight) > 0) weightsByExercise.set(item.exerciseId, Number(item.weight));
+    });
+  });
+
+  const currentProgram = program();
+  currentProgram.name = template.name;
+  currentProgram.template = template.template;
+  currentProgram.currentDayIndex = Math.min(currentProgram.currentDayIndex || 0, template.days.length - 1);
+
+  state.workout_days = template.days.map((day, index) => ({
+    id: crypto.randomUUID(),
+    programId: currentProgram.id,
+    order: index + 1,
+    title: day.title,
+    focus: day.focus,
+    exercises: day.exercises.map((item) => ({
+      ...item,
+      id: crypto.randomUUID(),
+      weight: weightsByExercise.get(item.exerciseId) ?? item.weight
+    }))
+  }));
+
+  user().frequency = frequency;
 }
 
 function startWorkout(dayId) {
