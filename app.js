@@ -945,17 +945,19 @@ function renderWorkout() {
 function renderTimerPanel() {
   const rest = activeRestInfo();
   return `
-    <div class="timer-grid">
-      <div class="timer-card">
-        <span>Время тренировки</span>
-        <strong data-elapsed data-started-at="${activeSession.startedAt}">${formatDuration(elapsedWorkoutSeconds())}</strong>
+    <div class="timer-sticky">
+      <div class="timer-grid">
+        <div class="timer-card">
+          <span>Время тренировки</span>
+          <strong data-elapsed data-started-at="${activeSession.startedAt}">${formatDuration(elapsedWorkoutSeconds())}</strong>
+        </div>
+        <div class="timer-card ${rest ? "active" : ""}">
+          <span>Пауза между подходами</span>
+          <strong data-rest-left>${rest ? formatDuration(rest.remaining) : "00:00"}</strong>
+          <small data-rest-label>${rest ? `${rest.exerciseName} · ${formatDuration(rest.duration)}` : "отметь подход или нажми «Пауза»"}</small>
+        </div>
+        <button class="ghost timer-reset" data-action="clear-rest">${rest ? "Сбросить паузу" : "Без паузы"}</button>
       </div>
-      <div class="timer-card ${rest ? "active" : ""}">
-        <span>Пауза между подходами</span>
-        <strong data-rest-left>${rest ? formatDuration(rest.remaining) : "00:00"}</strong>
-        <small data-rest-label>${rest ? `${rest.exerciseName} · ${formatDuration(rest.duration)}` : "отметь подход или нажми «Пауза»"}</small>
-      </div>
-      <button class="ghost timer-reset" data-action="clear-rest">${rest ? "Сбросить паузу" : "Без паузы"}</button>
     </div>
   `;
 }

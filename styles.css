@@ -447,6 +447,17 @@ input[type="range"] {
   gap: 8px;
 }
 
+.timer-sticky {
+  position: sticky;
+  top: 84px;
+  z-index: 9;
+  margin: -2px -4px 0;
+  padding: 8px 4px;
+  background: rgba(18, 23, 33, 0.94);
+  border-bottom: 1px solid rgba(39, 49, 66, 0.72);
+  backdrop-filter: blur(16px);
+}
+
 .timer-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -573,6 +584,10 @@ input[type="range"] {
 
   .metric-row {
     grid-template-columns: repeat(4, 1fr);
+  }
+
+  .timer-sticky {
+    top: 88px;
   }
 }
 
