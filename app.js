@@ -1608,7 +1608,7 @@ function analyzeSession(sessionId) {
     : "План обновлён по фактическим повторам и RPE. Держи технику и не гони вес быстрее восстановления.")
     + (genetic ? ` ${geneticAdvice.join(" ")}` : "");
 
-  applyRecommendationToProgram(items, nextWeights);
+  applyRecommendationToProgram(sessionId, items);
 
   return {
     id: crypto.randomUUID(),
@@ -1623,12 +1623,14 @@ function analyzeSession(sessionId) {
   };
 }
 
-function applyRecommendationToProgram(items, nextWeights) {
+function applyRecommendationToProgram(sessionId, items) {
+  const session = state.workout_sessions.find((item) => item.id === sessionId);
+  const day = state.workout_days.find((item) => item.id === session?.workoutDayId);
+
   items.forEach((sessionExercise) => {
     if (sessionExercise.skipped) return;
     const sets = setsFor(sessionExercise.id);
     const plannedDone = sets.every((set) => set.done && Number(set.actualReps) >= Number(set.plannedReps));
-    const day = state.workout_days.find((item) => item.id === todayDay().id);
     const plan = day?.exercises.find((item) => item.exerciseId === sessionExercise.exerciseId);
     if (!plan) return;
     const doneSets = sets.filter((set) => set.done);
@@ -1637,8 +1639,12 @@ function applyRecommendationToProgram(items, nextWeights) {
       : Number(sets[0]?.actualWeight || 0);
     const baseWeight = Number(plan.weight) > 0 ? Number(plan.weight) : actualWorkingWeight;
     if (plannedDone && Number(sessionExercise.rpe) < 8) plan.weight = roundWeight(baseWeight * 1.035);
+    if (plannedDone && Number(sessionExercise.rpe) >= 8 && Number(sessionExercise.rpe) <= 9) plan.weight = roundWeight(baseWeight);
     if (!plannedDone && Number(sessionExercise.rpe) >= 9) plan.weight = roundWeight(baseWeight * 0.96);
-    if (!plannedDone && Number(sessionExercise.rpe) < 9) plan.reps = Math.max(4, targetReps(plan.reps) - 1);
+    if (!plannedDone && Number(sessionExercise.rpe) < 9) {
+      plan.weight = roundWeight(baseWeight);
+      plan.reps = Math.max(4, targetReps(plan.reps) - 1);
+    }
   });
 }
 
