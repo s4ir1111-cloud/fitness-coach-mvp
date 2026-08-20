@@ -1,6 +1,10 @@
 const STORAGE_KEY = "coachfit.mvp.v5";
+const ACTUAL_WEIGHT_REPAIR_VERSION = 1;
 
 const seed = {
+  meta: {
+    actualWeightRepairVersion: ACTUAL_WEIGHT_REPAIR_VERSION
+  },
   users: [
     {
       id: "user-1",
@@ -631,12 +635,42 @@ async function applyBundledGeneticProfile(appState) {
 }
 
 function normalizeState(appState) {
+  appState.meta = appState.meta || {};
   const workoutDayCount = Array.isArray(appState.workout_days) ? appState.workout_days.length : 0;
   const profile = appState.users?.[0];
   if (profile && workoutDayCount > 0 && Number(profile.frequency) !== workoutDayCount) {
     profile.frequency = workoutDayCount;
   }
+  if (Number(appState.meta.actualWeightRepairVersion || 0) < ACTUAL_WEIGHT_REPAIR_VERSION) {
+    repairProgramWeightsFromHistory(appState);
+    appState.meta.actualWeightRepairVersion = ACTUAL_WEIGHT_REPAIR_VERSION;
+  }
   return appState;
+}
+
+function repairProgramWeightsFromHistory(appState) {
+  const sessions = [...(appState.workout_sessions || [])].sort((a, b) => new Date(a.finishedAt) - new Date(b.finishedAt));
+  sessions.forEach((session) => {
+    const day = appState.workout_days?.find((item) => item.id === session.workoutDayId)
+      || appState.workout_days?.find((item) => item.title === session.dayTitle);
+    if (!day) return;
+    const sessionExercises = (appState.workout_session_exercises || []).filter((item) => item.sessionId === session.id && !item.skipped);
+    sessionExercises.forEach((sessionExercise) => {
+      const plan = day.exercises.find((item) => item.exerciseId === sessionExercise.exerciseId);
+      if (!plan) return;
+      const sets = (appState.workout_sets || []).filter((set) => set.sessionExerciseId === sessionExercise.id);
+      const doneSets = sets.filter((set) => set.done);
+      if (!doneSets.length) return;
+      const actualWorkingWeight = doneSets.reduce((sum, set) => sum + Number(set.actualWeight), 0) / doneSets.length;
+      if (actualWorkingWeight <= 0) return;
+      const plannedDone = sets.every((set) => set.done && Number(set.actualReps) >= Number(set.plannedReps));
+      const rpe = Number(sessionExercise.rpe);
+      if (plannedDone && rpe < 8) plan.weight = roundWeight(actualWorkingWeight * 1.035);
+      if (plannedDone && rpe >= 8 && rpe <= 9) plan.weight = roundWeight(actualWorkingWeight);
+      if (!plannedDone && rpe >= 9) plan.weight = roundWeight(actualWorkingWeight * 0.96);
+      if (!plannedDone && rpe < 9) plan.weight = roundWeight(actualWorkingWeight);
+    });
+  });
 }
 
 function saveState() {
@@ -1553,7 +1587,7 @@ function analyzeSession(sessionId) {
       ? doneSets.reduce((sum, set) => sum + Number(set.actualWeight), 0) / doneSets.length
       : Number(sets[0]?.actualWeight || 0);
     const plannedWeight = Number(sets[0]?.plannedWeight || 0);
-    const baseWeight = plannedWeight > 0 ? plannedWeight : actualWorkingWeight;
+    const baseWeight = actualWorkingWeight > 0 ? actualWorkingWeight : plannedWeight;
     let nextWeight = baseWeight;
     let nextReps = sets[0]?.plannedReps || 0;
     let note = "оставить";
@@ -1637,7 +1671,7 @@ function applyRecommendationToProgram(sessionId, items) {
     const actualWorkingWeight = doneSets.length
       ? doneSets.reduce((sum, set) => sum + Number(set.actualWeight), 0) / doneSets.length
       : Number(sets[0]?.actualWeight || 0);
-    const baseWeight = Number(plan.weight) > 0 ? Number(plan.weight) : actualWorkingWeight;
+    const baseWeight = actualWorkingWeight > 0 ? actualWorkingWeight : Number(plan.weight);
     if (plannedDone && Number(sessionExercise.rpe) < 8) plan.weight = roundWeight(baseWeight * 1.035);
     if (plannedDone && Number(sessionExercise.rpe) >= 8 && Number(sessionExercise.rpe) <= 9) plan.weight = roundWeight(baseWeight);
     if (!plannedDone && Number(sessionExercise.rpe) >= 9) plan.weight = roundWeight(baseWeight * 0.96);
