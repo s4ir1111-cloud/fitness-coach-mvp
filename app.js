@@ -970,7 +970,10 @@ function renderWorkout() {
           ${activeSession.exercises.map(renderActiveExercise).join("")}
         </div>
         <div style="height:12px"></div>
-        <button class="primary" data-action="finish-workout">Завершить тренировку</button>
+        <div class="actions">
+          <button class="primary" data-action="finish-workout">Завершить тренировку</button>
+          <button class="danger" data-action="cancel-workout">Отменить тренировку</button>
+        </div>
       </div>
     </section>
   `;
@@ -1416,6 +1419,7 @@ function handleAction(event) {
     "select-workout-day": () => selectWorkoutDay(target.value),
     "change-frequency": () => changeProgramFrequency(target.value),
     "finish-workout": finishWorkout,
+    "cancel-workout": cancelWorkout,
     "skip-exercise": () => toggleSkip(target.dataset.id),
     "add-set": () => addSet(target.dataset.id),
     "remove-set": () => removeSet(target.dataset.id),
@@ -1485,12 +1489,14 @@ function applyProgramTemplate(frequency) {
 
 function startWorkout(dayId) {
   const day = dayById(dayId) || todayDay();
+  const previousDayIndex = program().currentDayIndex;
   setCurrentDay(day.id);
   activeRestTimer = null;
   activeSession = {
     id: crypto.randomUUID(),
     dayId: day.id,
     dayTitle: day.title,
+    previousDayIndex,
     startedAt: new Date().toISOString(),
     exercises: day.exercises.map((item) => ({
       id: crypto.randomUUID(),
@@ -1566,6 +1572,20 @@ function finishWorkout() {
   activeRestTimer = null;
   activeTab = "home";
   saveState();
+  render();
+}
+
+function cancelWorkout() {
+  if (!activeSession) return;
+  const confirmed = window.confirm("Отменить тренировку? Данные этой незавершённой сессии не сохранятся.");
+  if (!confirmed) return;
+  if (Number.isInteger(activeSession.previousDayIndex)) {
+    program().currentDayIndex = activeSession.previousDayIndex;
+    saveState();
+  }
+  activeSession = null;
+  activeRestTimer = null;
+  activeTab = "workout";
   render();
 }
 
