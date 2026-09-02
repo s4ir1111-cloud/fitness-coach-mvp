@@ -604,6 +604,7 @@ let activeTab = "home";
 let activeSession = null;
 let activeRestTimer = null;
 let timerLoop = null;
+let historyExportRange = { from: "", to: "" };
 
 async function loadState() {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -1173,6 +1174,7 @@ function renderExerciseCard(ex) {
 function renderHistory() {
   const sessions = [...state.workout_sessions].sort((a, b) => new Date(b.finishedAt) - new Date(a.finishedAt));
   const volumes = sessions.slice().reverse().map((session) => session.volume);
+  const exportRange = currentExportRange(sessions);
   return `
     <section class="grid two">
       <div class="panel pad">
@@ -1187,6 +1189,18 @@ function renderHistory() {
           ${metric("Объём", Math.round(totalVolume()), "суммарно")}
           ${metric("Макс", `${maxWorkingWeight()} кг`, "рабочий вес")}
           ${metric("Пропуски", skippedExercisesCount(), "упражнений")}
+        </div>
+        <div style="height:12px"></div>
+        <div class="export-panel">
+          <div class="field">
+            <label>С даты</label>
+            <input type="date" value="${escapeAttr(exportRange.from)}" data-action="set-export-range" data-field="from" />
+          </div>
+          <div class="field">
+            <label>По дату</label>
+            <input type="date" value="${escapeAttr(exportRange.to)}" data-action="set-export-range" data-field="to" />
+          </div>
+          <button class="secondary" data-action="export-history-pdf">PDF</button>
         </div>
         <div style="height:12px"></div>
         ${sessions.length ? `<div class="list">${sessions.map(renderHistoryRow).join("")}</div>` : `<div class="empty">История появится после завершения тренировки.</div>`}
@@ -1218,6 +1232,132 @@ function renderHistoryRow(session) {
       </div>
       ${renderSessionSummary(session)}
     </article>
+  `;
+}
+
+function currentExportRange(sessions = state.workout_sessions) {
+  if (!sessions.length) return historyExportRange;
+  const sorted = [...sessions].sort((a, b) => new Date(a.finishedAt) - new Date(b.finishedAt));
+  return {
+    from: historyExportRange.from || dateInputValue(sorted[0].finishedAt),
+    to: historyExportRange.to || dateInputValue(sorted[sorted.length - 1].finishedAt)
+  };
+}
+
+function setExportRange(fieldName, value) {
+  if (!["from", "to"].includes(fieldName)) return;
+  historyExportRange[fieldName] = value;
+}
+
+function sessionsInExportRange() {
+  const range = currentExportRange(state.workout_sessions);
+  const from = range.from ? new Date(`${range.from}T00:00:00`) : null;
+  const to = range.to ? new Date(`${range.to}T23:59:59`) : null;
+  return [...state.workout_sessions]
+    .filter((session) => {
+      const finishedAt = new Date(session.finishedAt);
+      return (!from || finishedAt >= from) && (!to || finishedAt <= to);
+    })
+    .sort((a, b) => new Date(a.finishedAt) - new Date(b.finishedAt));
+}
+
+function exportHistoryPdf() {
+  const sessions = sessionsInExportRange();
+  if (!sessions.length) {
+    window.alert("За выбранный период нет сохранённых тренировок.");
+    return;
+  }
+
+  const reportWindow = window.open("", "_blank");
+  if (!reportWindow) {
+    window.alert("Браузер заблокировал окно отчёта. Разреши всплывающие окна и попробуй ещё раз.");
+    return;
+  }
+
+  reportWindow.document.open();
+  reportWindow.document.write(renderHistoryPdfDocument(sessions));
+  reportWindow.document.close();
+  reportWindow.focus();
+  reportWindow.setTimeout(() => reportWindow.print(), 250);
+}
+
+function renderHistoryPdfDocument(sessions) {
+  const range = currentExportRange(sessions);
+  const total = sessions.reduce((sum, session) => sum + Number(session.volume || 0), 0);
+  const skipped = sessions.flatMap((session) => sessionExercises(session.id)).filter((item) => item.skipped).length;
+  const maxWeight = Math.max(0, ...sessions.flatMap((session) => sessionExercises(session.id))
+    .flatMap((item) => setsFor(item.id))
+    .filter((set) => set.done)
+    .map((set) => Number(set.actualWeight)));
+
+  return `<!doctype html>
+    <html lang="ru">
+      <head>
+        <meta charset="utf-8" />
+        <title>История тренировок CoachFit</title>
+        <style>
+          body { margin: 0; padding: 28px; color: #111827; font-family: Arial, sans-serif; }
+          h1 { margin: 0 0 6px; font-size: 24px; }
+          h2 { margin: 22px 0 8px; font-size: 18px; }
+          h3 { margin: 16px 0 6px; font-size: 15px; }
+          p { margin: 4px 0; color: #4b5563; }
+          .meta, .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 16px 0; }
+          .box { border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; }
+          .box b { display: block; color: #111827; font-size: 16px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 8px; page-break-inside: avoid; }
+          th, td { border: 1px solid #d1d5db; padding: 7px; text-align: left; font-size: 12px; vertical-align: top; }
+          th { background: #f3f4f6; color: #374151; }
+          .session { page-break-inside: avoid; border-top: 2px solid #111827; padding-top: 10px; margin-top: 18px; }
+          .muted { color: #6b7280; }
+          @page { margin: 16mm; }
+        </style>
+      </head>
+      <body>
+        <h1>CoachFit · история тренировок</h1>
+        <p>${escapeHtml(user().name)} · период ${escapeHtml(formatDateOnly(range.from))} — ${escapeHtml(formatDateOnly(range.to))}</p>
+        <div class="metrics">
+          <div class="box"><b>${sessions.length}</b><span>тренировок</span></div>
+          <div class="box"><b>${Math.round(total)}</b><span>общий объём</span></div>
+          <div class="box"><b>${maxWeight} кг</b><span>макс. рабочий вес</span></div>
+          <div class="box"><b>${skipped}</b><span>пропущено упражнений</span></div>
+        </div>
+        ${sessions.map(renderHistoryPdfSession).join("")}
+      </body>
+    </html>`;
+}
+
+function renderHistoryPdfSession(session) {
+  const items = sessionExercises(session.id);
+  return `
+    <section class="session">
+      <h2>${escapeHtml(session.dayTitle)} · ${escapeHtml(formatDate(session.finishedAt))}</h2>
+      <p>Длительность: ${escapeHtml(formatDuration(session.durationSeconds || 0))} · объём: ${Math.round(Number(session.volume || 0))}</p>
+      ${items.map(renderHistoryPdfExercise).join("")}
+    </section>
+  `;
+}
+
+function renderHistoryPdfExercise(item) {
+  const ex = exerciseById(item.exerciseId);
+  const sets = setsFor(item.id);
+  return `
+    <h3>${escapeHtml(ex?.name || "Упражнение")} ${item.skipped ? "<span class=\"muted\">· пропущено</span>" : ""}</h3>
+    <p>RPE: ${Number(item.rpe) || "—"}${item.comment ? ` · ${escapeHtml(item.comment)}` : ""}</p>
+    <table>
+      <thead><tr><th>#</th><th>План вес</th><th>Факт вес</th><th>План повт.</th><th>Факт повт.</th><th>Статус</th></tr></thead>
+      <tbody>
+        ${sets.map((set) => `
+          <tr>
+            <td>${set.setNumber}</td>
+            <td>${Number(set.plannedWeight)} кг</td>
+            <td>${Number(set.actualWeight)} кг</td>
+            <td>${Number(set.plannedReps)}</td>
+            <td>${Number(set.actualReps)}</td>
+            <td>${set.done ? "выполнено" : "не выполнено"}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
   `;
 }
 
@@ -1381,7 +1521,7 @@ function bindEvents() {
     const action = element.dataset.action;
     if (["select-workout-day", "change-frequency"].includes(action)) {
       element.addEventListener("change", handleAction);
-    } else if (["update-set", "set-rpe", "set-comment", "update-day-title", "update-plan"].includes(action)) {
+    } else if (["update-set", "set-rpe", "set-comment", "update-day-title", "update-plan", "set-export-range"].includes(action)) {
       element.addEventListener("input", handleAction);
     } else {
       element.addEventListener("click", handleAction);
@@ -1418,6 +1558,8 @@ function handleAction(event) {
     "start-workout-day": () => startWorkout(target.dataset.dayId),
     "select-workout-day": () => selectWorkoutDay(target.value),
     "change-frequency": () => changeProgramFrequency(target.value),
+    "set-export-range": () => setExportRange(target.dataset.field, target.value),
+    "export-history-pdf": exportHistoryPdf,
     "finish-workout": finishWorkout,
     "cancel-workout": cancelWorkout,
     "skip-exercise": () => toggleSkip(target.dataset.id),
@@ -1849,6 +1991,20 @@ function formatDate(value) {
   return new Date(value).toLocaleString("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
+function dateInputValue(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateOnly(value) {
+  if (!value) return "—";
+  return new Date(`${value}T00:00:00`).toLocaleDateString("ru-RU", { day: "2-digit", month: "short", year: "numeric" });
+}
+
 function formatDuration(totalSeconds) {
   const safeSeconds = Math.max(0, Math.round(Number(totalSeconds) || 0));
   const hours = Math.floor(safeSeconds / 3600);
@@ -1862,6 +2018,15 @@ function formatDuration(totalSeconds) {
 
 function escapeAttr(value) {
   return String(value ?? "").replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 loadState().then((loadedState) => {
