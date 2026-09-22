@@ -1470,14 +1470,21 @@ function renderAdminDay(day) {
 }
 
 function renderRecommendation(rec) {
+  const canApply = rec.replacements?.length && !rec.appliedAt;
   return `
     <div class="list">
       <div class="item"><h3>Хорошо</h3><p>${rec.good}</p></div>
       <div class="item"><h3>Спад</h3><p>${rec.drop}</p></div>
-      <div class="item"><h3>Следующий план</h3><p>${rec.nextPlan}</p></div>
+      <div class="item">
+        <h3>Следующий план</h3>
+        <p>${rec.nextPlan}</p>
+        <p class="muted-note">Веса и повторы обновляются автоматически после завершения тренировки. Замены и смена схемы применяются вручную.</p>
+      </div>
       <div class="tag-row">
         ${rec.replacements.map((item) => `<span class="tag warn">замена: ${item}</span>`).join("") || `<span class="tag good">упражнения оставить</span>`}
       </div>
+      ${canApply ? `<button class="secondary" data-action="apply-recommendation" data-rec-id="${rec.id}">Применить рекомендации в программу</button>` : ""}
+      ${rec.appliedAt ? `<span class="tag good">применено в программу</span>` : ""}
     </div>
   `;
 }
@@ -1560,6 +1567,7 @@ function handleAction(event) {
     "change-frequency": () => changeProgramFrequency(target.value),
     "set-export-range": () => setExportRange(target.dataset.field, target.value),
     "export-history-pdf": exportHistoryPdf,
+    "apply-recommendation": () => applyRecommendationById(target.dataset.recId),
     "finish-workout": finishWorkout,
     "cancel-workout": cancelWorkout,
     "skip-exercise": () => toggleSkip(target.dataset.id),
@@ -1842,6 +1850,61 @@ function applyRecommendationToProgram(sessionId, items) {
       plan.reps = Math.max(4, targetReps(plan.reps) - 1);
     }
   });
+}
+
+function applyRecommendationById(recommendationId) {
+  const recommendation = state.trainer_recommendations.find((item) => item.id === recommendationId);
+  if (!recommendation || recommendation.appliedAt) return;
+  const session = state.workout_sessions.find((item) => item.id === recommendation.sessionId);
+  const day = state.workout_days.find((item) => item.id === session?.workoutDayId)
+    || state.workout_days.find((item) => item.title === session?.dayTitle);
+  if (!day) {
+    window.alert("Не удалось найти день программы для этой рекомендации.");
+    return;
+  }
+
+  let appliedCount = 0;
+  recommendation.replacements.forEach((text) => {
+    if (text.includes("→")) {
+      appliedCount += applyExerciseReplacement(day, text);
+      return;
+    }
+    if (text.includes("сменить схему")) {
+      appliedCount += applySchemeChange(day, text);
+    }
+  });
+
+  if (!appliedCount) {
+    window.alert("Для этой рекомендации нет изменений, которые можно применить автоматически.");
+    return;
+  }
+
+  recommendation.appliedAt = new Date().toISOString();
+  saveState();
+  activeTab = "program";
+  render();
+}
+
+function applyExerciseReplacement(day, recommendationText) {
+  const [rawCurrent, rawNext] = recommendationText.split("→").map((part) => part.trim());
+  const currentName = rawCurrent.replace(/^замена:\s*/i, "");
+  const nextName = rawNext;
+  const plan = day.exercises.find((item) => exerciseById(item.exerciseId)?.name === currentName);
+  const nextExercise = state.exercises.find((exercise) => exercise.name === nextName);
+  if (!plan || !nextExercise) return 0;
+  plan.exerciseId = nextExercise.id;
+  plan.coachNotes = `Замена по рекомендации тренера: вместо ${currentName}. ${plan.coachNotes}`;
+  return 1;
+}
+
+function applySchemeChange(day, recommendationText) {
+  const exerciseName = recommendationText.split(":")[0].trim();
+  const plan = day.exercises.find((item) => exerciseById(item.exerciseId)?.name === exerciseName);
+  if (!plan) return 0;
+  plan.sets = 3;
+  plan.reps = 10;
+  plan.coachNotes = `Схема изменена по рекомендации тренера: 3×10 для выхода из плато. ${plan.coachNotes}`;
+  return 1;
 }
 
 function toggleSkip(id) {
