@@ -1741,6 +1741,9 @@ function cancelWorkout() {
 
 function analyzeSession(sessionId) {
   const items = sessionExercises(sessionId);
+  const session = state.workout_sessions.find((item) => item.id === sessionId);
+  const day = state.workout_days.find((item) => item.id === session?.workoutDayId)
+    || state.workout_days.find((item) => item.title === session?.dayTitle);
   const nextWeights = [];
   const replacements = [];
   const drops = [];
@@ -1765,7 +1768,7 @@ function analyzeSession(sessionId) {
     if (item.skipped) {
       drops.push(`${ex.name} пропущено`);
       if (consecutiveSkips(item.exerciseId) >= 2) {
-        replacements.push(`${ex.name} → ${ex.alternatives[0]}`);
+        replacements.push(rotationRecommendation(ex, day, "2 пропуска подряд"));
       }
     } else if (plannedDone && avgRpe < 8) {
       nextWeight = roundWeight(baseWeight * 1.035);
@@ -1778,6 +1781,7 @@ function analyzeSession(sessionId) {
       if (avgRpe >= 9) {
         nextWeight = roundWeight(baseWeight * 0.96);
         note = "снизить вес";
+        replacements.push(rotationRecommendation(ex, day, "RPE 9-10 и план не закрыт"));
       } else {
         nextReps = Math.max(4, nextReps - 1);
         note = "снизить повторы";
@@ -1786,6 +1790,7 @@ function analyzeSession(sessionId) {
     }
 
     if (plateauCount(item.exerciseId) >= 3) {
+      replacements.push(rotationRecommendation(ex, day, "плато 3 тренировки"));
       replacements.push(`${ex.name}: сменить схему на 5×5 или 3×10`);
     }
 
@@ -1822,9 +1827,47 @@ function analyzeSession(sessionId) {
     good: wins.length ? wins.join("; ") : "Ты зафиксировал данные, теперь система может точнее подбирать нагрузку.",
     drop: drops.length ? drops.join("; ") : "Критичных спадов нет.",
     nextPlan: `${nextWeights.join("; ")}. Дополнительно: ${geneticAdvice.slice(0, 2).join(" ")}`,
-    replacements,
+    replacements: uniqueList(replacements),
     coachComment
   };
+}
+
+function rotationRecommendation(exercise, day, reason) {
+  const candidate = findRotationExercise(exercise, day);
+  if (!candidate) return `${exercise.name}: сменить схему на 5×5 или 3×10 (${reason})`;
+  return `${exercise.name} → ${candidate.name} (${reason})`;
+}
+
+function findRotationExercise(exercise, day) {
+  const usedExerciseIds = new Set(day?.exercises.map((item) => item.exerciseId) || []);
+  const alternativeNames = new Set(exercise.alternatives || []);
+  const sourceTokens = muscleTokens(exercise.muscle);
+  const scored = state.exercises
+    .filter((candidate) => candidate.id !== exercise.id)
+    .map((candidate) => {
+      const candidateTokens = muscleTokens(candidate.muscle);
+      const overlap = candidateTokens.filter((token) => sourceTokens.includes(token)).length;
+      const isNamedAlternative = alternativeNames.has(candidate.name);
+      const sameType = candidate.type === exercise.type;
+      const alreadyInDay = usedExerciseIds.has(candidate.id);
+      const score = (overlap * 4) + (sameType ? 3 : 0) + (isNamedAlternative ? 6 : 0) - (alreadyInDay ? 5 : 0);
+      return { candidate, score, alreadyInDay };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || Number(a.alreadyInDay) - Number(b.alreadyInDay));
+  return scored[0]?.candidate || null;
+}
+
+function muscleTokens(value) {
+  return String(value || "")
+    .toLowerCase()
+    .split(/[\/,\s]+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function uniqueList(items) {
+  return [...new Set(items.filter(Boolean))];
 }
 
 function applyRecommendationToProgram(sessionId, items) {
@@ -1888,11 +1931,12 @@ function applyRecommendationById(recommendationId) {
 function applyExerciseReplacement(day, recommendationText) {
   const [rawCurrent, rawNext] = recommendationText.split("→").map((part) => part.trim());
   const currentName = rawCurrent.replace(/^замена:\s*/i, "");
-  const nextName = rawNext;
+  const nextName = rawNext.replace(/\s*\(.+\)\s*$/, "");
   const plan = day.exercises.find((item) => exerciseById(item.exerciseId)?.name === currentName);
   const nextExercise = state.exercises.find((exercise) => exercise.name === nextName);
   if (!plan || !nextExercise) return 0;
   plan.exerciseId = nextExercise.id;
+  plan.weight = 0;
   plan.coachNotes = `Замена по рекомендации тренера: вместо ${currentName}. ${plan.coachNotes}`;
   return 1;
 }
