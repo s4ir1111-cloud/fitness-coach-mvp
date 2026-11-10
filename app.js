@@ -1160,7 +1160,7 @@ function reviewedPlanDays() {
   const p = (id, sets, reps, weight, rest, extra = "") => planExercise(id, sets, reps, weight, rest, `${note} ${extra}`);
   return [
     { title: "Верх", focus: "грудь/спина/дельты/руки", exercises: [
-      p("ex-incline-db-press", 3, "8-12", 35, 150),
+      p("ex-bench", 3, "8-10", 47.5, 180, "Возврат жима после перерыва: первый выход RPE 7-8. Последний результат 50 кг 3×9 при RPE 9; снизь вес, если техника или запас повторов ухудшаются."),
       p("ex-row", 3, "10-12", 52.5, 150, "Сначала закрой все три подхода; 9 ноября третий не отмечен."),
       p("ex-lat-pulldown", 3, "10-12", 45, 120),
       p("ex-lateral-raise", 2, "12-15", 15, 90),
@@ -1178,7 +1178,7 @@ function reviewedPlanDays() {
       p("ex-bulgarian-split-squat", 2, "10-12", 17.5, 150),
       p("ex-press", 3, "8-12", 30, 150),
       p("ex-one-arm-db-row", 3, "10-15", 17.5, 120),
-      p("ex-pec-deck", 2, "10-15", 57.5, 90, "4 ноября на 60 кг повторы 15/15/10: сначала ровные подходы."),
+      p("ex-incline-db-press", 2, "8-12", 35, 150, "Второй грудной жим за цикл. Сохраняй прежний способ учета веса гантелей."),
       p("ex-seated-leg-curl", 2, "12-15", 42.5, 90),
       p("ex-rear-delt-fly", 2, "12-15", 30, 90)
     ]}
