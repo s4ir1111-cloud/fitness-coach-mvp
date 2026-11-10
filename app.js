@@ -1115,6 +1115,7 @@ function renderProgram() {
         </div>
         ${renderFrequencySelect()}
         <div style="height:12px"></div>
+        ${renderReviewedPlan()}
         <div class="list">${orderedDays().map(renderProgramDay).join("")}</div>
       </div>
       <div class="panel pad">
@@ -1152,6 +1153,60 @@ function renderProgramDay(day) {
       </div>
     </article>
   `;
+}
+
+function reviewedPlanDays() {
+  const note = "RPE 7-8, запас 2-3 повтора. Вес записан в прежней системе учета; для гантелей уточни, указан вес пары или одной гантели.";
+  const p = (id, sets, reps, weight, rest, extra = "") => planExercise(id, sets, reps, weight, rest, `${note} ${extra}`);
+  return [
+    { title: "Верх", focus: "грудь/спина/дельты/руки", exercises: [
+      p("ex-incline-db-press", 3, "8-12", 35, 150),
+      p("ex-row", 3, "10-12", 52.5, 150, "Сначала закрой все три подхода; 9 ноября третий не отмечен."),
+      p("ex-lat-pulldown", 3, "10-12", 45, 120),
+      p("ex-lateral-raise", 2, "12-15", 15, 90),
+      p("ex-triceps-pushdown", 2, "12-15", 40, 90),
+      p("ex-hammer-curl", 2, "10-15", 20, 90)
+    ]},
+    { title: "Низ", focus: "квадрицепс/задняя цепь/икры", exercises: [
+      p("ex-hack-squat", 3, "8-12", 85, 180, "Последняя отдельная тренировка ног в отчете 22 октября. Первый выход после перерыва: RPE 6-7; при необходимости снизь вес."),
+      p("ex-rdl", 3, "8-12", 60, 180, "Первый выход после перерыва: RPE 6-7, без отказа."),
+      p("ex-leg-press", 2, "10-15", 100, 150),
+      p("ex-seated-leg-curl", 3, "10-15", 40, 90),
+      p("ex-calf-raise", 3, "12-15", 27.5, 90)
+    ]},
+    { title: "Фулбоди", focus: "ноги/плечи/спина/грудь", exercises: [
+      p("ex-bulgarian-split-squat", 2, "10-12", 17.5, 150),
+      p("ex-press", 3, "8-12", 30, 150),
+      p("ex-one-arm-db-row", 3, "10-15", 17.5, 120),
+      p("ex-pec-deck", 2, "10-15", 57.5, 90, "4 ноября на 60 кг повторы 15/15/10: сначала ровные подходы."),
+      p("ex-seated-leg-curl", 2, "12-15", 42.5, 90),
+      p("ex-rear-delt-fly", 2, "12-15", 30, 90)
+    ]}
+  ];
+}
+
+function renderReviewedPlan() {
+  if (program().reviewVersion === "2026-11-10") return `<p class="muted-note">План по отчету до 09.11.2026 применен. Между силовыми днями оставляй день отдыха.</p>`;
+  return `<details><summary>План по отчету до 09.11.2026</summary>
+    <p>3 дня: Верх / Низ / Фулбоди. Между силовыми днями - день отдыха. RPE 7-8; первый день ног после перерыва RPE 6-7. Рабочие веса предварительные, подбирай по технике и самочувствию.</p>
+    <p>Генетический профиль сохранен как справочная информация: конкретные веса и упражнения выбраны по тренировкам. Интерпретация ACTN3 требует проверки исходного отчета.</p>
+    ${reviewedPlanDays().map(day => `<h3>${day.title}</h3><ul>${day.exercises.map(p => `<li>${escapeHtml(exerciseById(p.exerciseId).name)}: ${p.sets} × ${p.reps}, ${p.weight} кг</li>`).join("")}</ul>`).join("")}
+    <button class="secondary" data-action="apply-reviewed-plan">Применить план по отчету</button>
+  </details><div style="height:12px"></div>`;
+}
+
+function applyReviewedPlan() {
+  if (activeSession) { window.alert("Сначала заверши или отмени активную тренировку."); return; }
+  const days = reviewedPlanDays();
+  program().reviewBackup = structuredClone(state.workout_days);
+  state.workout_days = days.map((day, i) => ({ ...day,
+    id: orderedDays().find(old => old.title === day.title)?.id || crypto.randomUUID(),
+    programId: program().id, order: i + 1,
+    exercises: day.exercises.map(p => ({ ...p, rotationHoldUntil: state.workout_sessions.length + 6 }))
+  }));
+  Object.assign(program(), {name: "Верх / Низ / Фулбоди - блок по отчету", reviewVersion: "2026-11-10", currentDayIndex: 1});
+  user().frequency = 3;
+  saveState(); render();
 }
 
 function renderExerciseCard(ex) {
@@ -1568,6 +1623,7 @@ function handleAction(event) {
     "set-export-range": () => setExportRange(target.dataset.field, target.value),
     "export-history-pdf": exportHistoryPdf,
     "apply-recommendation": () => applyRecommendationById(target.dataset.recId),
+    "apply-reviewed-plan": applyReviewedPlan,
     "finish-workout": finishWorkout,
     "cancel-workout": cancelWorkout,
     "skip-exercise": () => toggleSkip(target.dataset.id),
@@ -1781,7 +1837,6 @@ function analyzeSession(sessionId) {
       if (avgRpe >= 9) {
         nextWeight = roundWeight(baseWeight * 0.96);
         note = "снизить вес";
-        replacements.push(rotationRecommendation(ex, day, "RPE 9-10 и план не закрыт"));
       } else {
         nextReps = Math.max(4, nextReps - 1);
         note = "снизить повторы";
@@ -1791,7 +1846,6 @@ function analyzeSession(sessionId) {
 
     if (plateauCount(item.exerciseId) >= 3) {
       replacements.push(rotationRecommendation(ex, day, "плато 3 тренировки"));
-      replacements.push(`${ex.name}: сменить схему на 5×5 или 3×10`);
     }
 
     nextWeights.push(`${ex.name}: ${formatWeight(nextWeight)}, ${sets.length}×${nextReps} (${note})`);
@@ -1833,8 +1887,10 @@ function analyzeSession(sessionId) {
 }
 
 function rotationRecommendation(exercise, day, reason) {
+  const plan = day?.exercises.find(p => p.exerciseId === exercise.id);
+  if (Number(plan?.rotationHoldUntil || 0) > state.workout_sessions.length) return null;
   const candidate = findRotationExercise(exercise, day);
-  if (!candidate) return `${exercise.name}: сменить схему на 5×5 или 3×10 (${reason})`;
+  if (!candidate) return null;
   return `${exercise.name} → ${candidate.name} (${reason})`;
 }
 
@@ -1843,7 +1899,9 @@ function findRotationExercise(exercise, day) {
   const alternativeNames = new Set(exercise.alternatives || []);
   const sourceTokens = muscleTokens(exercise.muscle);
   const scored = state.exercises
-    .filter((candidate) => candidate.id !== exercise.id)
+    .filter((candidate) => candidate.id !== exercise.id && !usedExerciseIds.has(candidate.id)
+      && candidate.type === exercise.type
+      && muscleTokens(candidate.muscle).some(token => sourceTokens.includes(token)))
     .map((candidate) => {
       const candidateTokens = muscleTokens(candidate.muscle);
       const overlap = candidateTokens.filter((token) => sourceTokens.includes(token)).length;
@@ -1935,8 +1993,12 @@ function applyExerciseReplacement(day, recommendationText) {
   const plan = day.exercises.find((item) => exerciseById(item.exerciseId)?.name === currentName);
   const nextExercise = state.exercises.find((exercise) => exercise.name === nextName);
   if (!plan || !nextExercise) return 0;
+  if (day.exercises.some(item => item !== plan && item.exerciseId === nextExercise.id)
+    || nextExercise.type !== exerciseById(plan.exerciseId).type
+    || !muscleTokens(nextExercise.muscle).some(token => muscleTokens(exerciseById(plan.exerciseId).muscle).includes(token))) return 0;
   plan.exerciseId = nextExercise.id;
   plan.weight = 0;
+  plan.rotationHoldUntil = state.workout_sessions.length + 6;
   plan.coachNotes = `Замена по рекомендации тренера: вместо ${currentName}. ${plan.coachNotes}`;
   return 1;
 }
@@ -2057,7 +2119,8 @@ function plateauCount(exerciseId) {
   if (history.length < 4) return 0;
   const volumes = history.map((item) => item.volume);
   const last = volumes[volumes.length - 1];
-  return volumes.every((value) => Math.abs(value - last) < 1) ? 3 : 0;
+  return last > 0 && history.every(item => Number(item.rpe) >= 8)
+    && volumes.every((value) => Math.abs(value - last) < 1) ? 3 : 0;
 }
 
 function exerciseProgress() {
